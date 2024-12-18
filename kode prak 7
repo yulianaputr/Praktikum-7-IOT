@@ -1,0 +1,82 @@
+#include <DHT.h>
+#include <Servo.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Pin konfigurasi
+#define DHTPIN 7
+#define DHTTYPE DHT22
+#define TRIGPIN 9
+#define ECHOPIN 8
+#define RELAYPIN 6
+#define LEDPIN 5
+#define SERVOPIN 3
+
+DHT dht(DHTPIN, DHTTYPE);
+Servo servo;
+LiquidCrystal_I2C lcd(0x27, 20, 4); // Alamat I2C LCD bisa berbeda, misal 0x3F
+
+void setup() {
+  pinMode(TRIGPIN, OUTPUT);
+  pinMode(ECHOPIN, INPUT);
+  pinMode(RELAYPIN, OUTPUT);
+  pinMode(LEDPIN, OUTPUT);
+  
+  servo.attach(SERVOPIN);
+  servo.write(0); // Servo di posisi tertutup
+
+  lcd.init();
+  lcd.backlight();
+  dht.begin();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Pintu Otomatis");
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+  // Baca suhu dan kelembapan dari DHT22
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  
+  // Baca jarak dari sensor ultrasonik
+  digitalWrite(TRIGPIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIGPIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIGPIN, LOW);
+  long duration = pulseIn(ECHOPIN, HIGH);
+  int distance = duration * 0.034 / 2;
+
+  // Tampilkan data di LCD
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print(" C");
+  lcd.setCursor(0, 1);
+  lcd.print("Humidity: ");
+  lcd.print(humidity);
+  lcd.print(" %");
+  lcd.setCursor(0, 2);
+  lcd.print("Distance: ");
+  lcd.print(distance);
+  lcd.print(" cm");
+
+  // Logika kontrol pintu
+  if (distance < 50 && temperature < 30) { // Kondisi untuk membuka pintu
+    servo.write(90); // Buka pintu
+    digitalWrite(RELAYPIN, HIGH); // Hidupkan relay
+    digitalWrite(LEDPIN, HIGH);  // Nyalakan LED
+    lcd.setCursor(0, 3);
+    lcd.print("Pintu: Terbuka");
+  } else {
+    servo.write(0); // Tutup pintu
+    digitalWrite(RELAYPIN, LOW); // Matikan relay
+    digitalWrite(LEDPIN, LOW);   // Matikan LED
+    lcd.setCursor(0, 3);
+    lcd.print("Pintu: Tertutup");
+  }
+
+  delay(500);
+}
